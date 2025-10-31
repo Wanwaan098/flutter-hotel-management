@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
 import '../../data/models/room_model.dart';
 import '../../data/datasources/room_remote_datasource.dart';
 import '../../data/repositories/room_repository_impl.dart';
@@ -22,6 +21,8 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
   String selectedLoaiPhong = 'Tất cả';
   String selectedTinhTrang = 'Tất cả';
 
+  final Color pastelPurple = const Color.fromARGB(255,228,185,241,); 
+
   @override
   void initState() {
     super.initState();
@@ -40,10 +41,10 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
     final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: const Color(0xFFF9F4FB), 
       appBar: AppBar(
         title: const Text('Quản lý phòng'),
-        backgroundColor: const Color.fromARGB(255, 247, 184, 243),
+        backgroundColor: pastelPurple,
         centerTitle: true,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(110),
@@ -55,7 +56,7 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
                 TextField(
                   controller: searchController,
                   decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search),
+                    prefixIcon: Icon(Icons.search, color: pastelPurple),
                     hintText: 'Tìm theo số phòng...',
                     filled: true,
                     fillColor: Colors.white,
@@ -79,6 +80,7 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
                         initialValue: selectedLoaiPhong,
                         decoration: InputDecoration(
                           labelText: 'Loại phòng',
+                          labelStyle: TextStyle(color: pastelPurple),
                           filled: true,
                           fillColor: Colors.white,
                           border: OutlineInputBorder(
@@ -89,6 +91,7 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
                             vertical: 4,
                           ),
                         ),
+                        dropdownColor: Colors.white,
                         items:
                             [
                                   'Tất cả',
@@ -114,6 +117,7 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
                         initialValue: selectedTinhTrang,
                         decoration: InputDecoration(
                           labelText: 'Tình trạng',
+                          labelStyle: TextStyle(color: pastelPurple),
                           filled: true,
                           fillColor: Colors.white,
                           border: OutlineInputBorder(
@@ -124,6 +128,7 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
                             vertical: 4,
                           ),
                         ),
+                        dropdownColor: Colors.white,
                         items: ['Tất cả', 'Trống', 'Đã đặt']
                             .map(
                               (e) => DropdownMenuItem(value: e, child: Text(e)),
@@ -143,6 +148,7 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
       drawer: AppDrawer(user: user),
 
       floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: pastelPurple,
         onPressed: () => showDialog(
           context: context,
           builder: (_) => RoomForm(
@@ -226,12 +232,13 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 20, width: 30),
+                const SizedBox(height: 20),
 
                 // --- Danh sách phòng ---
                 Column(
                   children: filteredRooms.map((r) {
                     return Card(
+                      color: Colors.white,
                       margin: const EdgeInsets.symmetric(vertical: 10),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(15),
@@ -258,22 +265,31 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
                                 children: [
                                   Text(
                                     'Phòng ${r.soPhong} - ${r.loaiPhong}',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,
+                                      color: pastelPurple,
                                     ),
                                   ),
                                   const SizedBox(height: 4),
                                   Text('Giá: ${r.giaDem} VNĐ/đêm'),
                                   Text('Tầng: ${r.tang}'),
-                                  Text('Trạng thái: ${r.tinhTrang}'),
+                                  Text(
+                                    'Trạng thái: ${r.tinhTrang}',
+                                    style: TextStyle(
+                                      color: r.tinhTrang == 'Trống'? Colors.green: 
+                                             r.tinhTrang == 'Đã đặt'? Colors.red
+                                          : Colors.black,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
                             Column(
                               children: [
                                 IconButton(
-                                  icon: const Icon(Icons.edit),
+                                  icon: Icon(Icons.edit, color: pastelPurple),
                                   onPressed: () => showDialog(
                                     context: context,
                                     builder: (_) => RoomForm(
@@ -307,7 +323,7 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
                                 IconButton(
                                   icon: const Icon(
                                     Icons.delete,
-                                    color: Colors.red,
+                                    color: Color.fromARGB(255, 228, 90, 80),
                                   ),
                                   onPressed: () async {
                                     final confirm = await showDialog<bool>(
