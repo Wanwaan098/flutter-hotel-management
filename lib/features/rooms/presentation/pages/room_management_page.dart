@@ -199,7 +199,6 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
               return matchSearch && matchLoai && matchTinhTrang;
             }).toList();
 
-            
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -311,7 +310,46 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
                                     color: Colors.red,
                                   ),
                                   onPressed: () async {
-                                    await roomRepository.deleteRoom(r.id);
+                                    final confirm = await showDialog<bool>(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: const Text('Xác nhận xóa'),
+                                        content: Text(
+                                          'Bạn có chắc muốn xóa phòng ${r.soPhong}?',
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, false),
+                                            child: const Text('Hủy'),
+                                          ),
+                                          ElevatedButton(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.red,
+                                            ),
+                                            onPressed: () =>
+                                                Navigator.pop(context, true),
+                                            child: const Text('Xóa'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+
+                                    if (confirm == true) {
+                                      await roomRepository.deleteRoom(r.id);
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              'Đã xóa phòng ${r.soPhong}',
+                                            ),
+                                            backgroundColor: Colors.redAccent,
+                                          ),
+                                        );
+                                      }
+                                    }
                                   },
                                 ),
                               ],
