@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:ngoctran/features/rooms/data/datasources/room_remote_datasource.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import '../../data/models/room_model.dart';
+import '../../data/datasources/room_remote_datasource.dart';
+import '../../data/repositories/room_repository_impl.dart';
+import '../../domain/entities/room_entity.dart';
 import '../widgets/room_form.dart';
 import 'package:ngoctran/core/presentation/widget/app_drawer.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class RoomManagementPage extends StatefulWidget {
   const RoomManagementPage({super.key});
@@ -14,7 +17,7 @@ class RoomManagementPage extends StatefulWidget {
 }
 
 class _RoomManagementPageState extends State<RoomManagementPage> {
-  late final RoomRemoteDataSource roomDataSource;
+  late final RoomRepositoryImpl roomRepository;
   final TextEditingController searchController = TextEditingController();
   String selectedLoaiPhong = 'Tất cả';
   String selectedTinhTrang = 'Tất cả';
@@ -22,7 +25,8 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
   @override
   void initState() {
     super.initState();
-    roomDataSource = RoomRemoteDataSource(FirebaseFirestore.instance);
+    final remoteDataSource = RoomRemoteDataSource(FirebaseFirestore.instance);
+    roomRepository = RoomRepositoryImpl(remoteDataSource);
   }
 
   @override
@@ -34,6 +38,7 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
+
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
@@ -136,13 +141,14 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
         ),
       ),
       drawer: AppDrawer(user: user),
+
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => showDialog(
           context: context,
           builder: (_) => RoomForm(
             onSubmit: (room) async {
-              await roomDataSource.addRoom(
-                RoomModel(
+              await roomRepository.addRoom(
+                Room(
                   id: '',
                   soPhong: room.soPhong,
                   tang: room.tang,
@@ -160,10 +166,10 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
         icon: const Icon(Icons.add),
       ),
 
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: StreamBuilder<List<RoomModel>>(
-          stream: roomDataSource.getRoomsStream(),
+        child: StreamBuilder<List<Room>>(
+          stream: roomRepository.getRoomsStream(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
@@ -193,6 +199,7 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
               return matchSearch && matchLoai && matchTinhTrang;
             }).toList();
 
+            
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -220,98 +227,100 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 20, width: 30),
 
                 // --- Danh sách phòng ---
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: filteredRooms.length,
-                    itemBuilder: (_, i) {
-                      final r = filteredRooms[i];
-                      return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 10),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        elevation: 4,
-                        child: Padding(
-                          padding: const EdgeInsets.all(10),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.network(
-                                  r.anhPhong,
-                                  width: 130,
-                                  height: 100,
-                                  fit: BoxFit.cover,
-                                ),
+                Column(
+                  children: filteredRooms.map((r) {
+                    return Card(
+                      margin: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      elevation: 4,
+                      child: Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.network(
+                                r.anhPhong,
+                                width: 130,
+                                height: 100,
+                                fit: BoxFit.cover,
                               ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Phòng ${r.soPhong} - ${r.loaiPhong}',
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Giá: ${r.giaDem} VNĐ/đêm',
-                                      style: const TextStyle(fontSize: 15),
-                                    ),
-                                    Text('Tầng: ${r.tang}'),
-                                    Text('Trạng thái: ${r.tinhTrang}'),
-                                  ],
-                                ),
-                              ),
-                              Column(
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.edit),
-                                    onPressed: () => showDialog(
-                                      context: context,
-                                      builder: (_) => RoomForm(
-                                        room: r,
-                                        onSubmit: (updatedRoom) async {
-                                          await roomDataSource.updateRoom(
-                                            RoomModel(
-                                              id: r.id,
-                                              soPhong: updatedRoom.soPhong,
-                                              tang: updatedRoom.tang,
-                                              loaiPhong: updatedRoom.loaiPhong,
-                                              giaDem: updatedRoom.giaDem,
-                                              tinhTrang: updatedRoom.tinhTrang,
-                                              anhPhong: updatedRoom.anhPhong,
-                                              moTa: updatedRoom.moTa,
-                                            ),
-                                          );
-                                        },
-                                      ),
+                                  Text(
+                                    'Phòng ${r.soPhong} - ${r.loaiPhong}',
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.delete,
-                                      color: Colors.red,
-                                    ),
-                                    onPressed: () async {
-                                      await roomDataSource.deleteRoom(r.id);
-                                    },
-                                  ),
+                                  const SizedBox(height: 4),
+                                  Text('Giá: ${r.giaDem} VNĐ/đêm'),
+                                  Text('Tầng: ${r.tang}'),
+                                  Text('Trạng thái: ${r.tinhTrang}'),
                                 ],
                               ),
-                            ],
-                          ),
+                            ),
+                            Column(
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.edit),
+                                  onPressed: () => showDialog(
+                                    context: context,
+                                    builder: (_) => RoomForm(
+                                      room: RoomModel(
+                                        id: r.id,
+                                        soPhong: r.soPhong,
+                                        tang: r.tang,
+                                        loaiPhong: r.loaiPhong,
+                                        giaDem: r.giaDem,
+                                        tinhTrang: r.tinhTrang,
+                                        anhPhong: r.anhPhong,
+                                        moTa: r.moTa,
+                                      ),
+                                      onSubmit: (updatedRoom) async {
+                                        await roomRepository.updateRoom(
+                                          Room(
+                                            id: r.id,
+                                            soPhong: updatedRoom.soPhong,
+                                            tang: updatedRoom.tang,
+                                            loaiPhong: updatedRoom.loaiPhong,
+                                            giaDem: updatedRoom.giaDem,
+                                            tinhTrang: updatedRoom.tinhTrang,
+                                            anhPhong: updatedRoom.anhPhong,
+                                            moTa: updatedRoom.moTa,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete,
+                                    color: Colors.red,
+                                  ),
+                                  onPressed: () async {
+                                    await roomRepository.deleteRoom(r.id);
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  }).toList(),
                 ),
               ],
             );
@@ -328,7 +337,7 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
     Color color,
   ) {
     return Container(
-      width: 110,
+      width: 200,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
